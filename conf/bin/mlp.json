@@ -1,0 +1,29 @@
+{
+  "model":{
+    "arch":"mlp",
+    "weight_init":"xavier",
+    "max_len":50,
+    "w_dim":100,
+    "w_in_dropout":0.0,
+    "pretrained":"vecs/glove.twitter.27B.50d.t.txt",
+    "dense_layer":[
+      {"dim":1024,"dropout":0.2,"batchnorm":true},
+      {"dim":512,"dropout":0.2,"batchnorm":true}
+    ]
+  },
+  "optim":{
+    "method":"adam",
+    "lr":0.001,
+    "momentum":0.0,
+    "l2_loss":0.0,
+    "lr_scheduler":null,
+    "step":25,
+    "decay":1.0
+  },
+  "train":{
+    "batch_size":256,
+    "max_epochs":500,
+    "val_steps":5,
+    "patience":5
+  }
+}
