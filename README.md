@@ -4,14 +4,14 @@ This repository holds the data, source code and resulting model weights for the 
 
 This repository is still a work in progress.
 
-TO DO:
-  [] - Fix any errors with the initial commit
-  [] - Save/Load weight functionality
-  [] - Complete README file. 
-    [] - Add required packages and version numbers.
-    [] - Add general usability, such as train, save and load models.
-    [] - Add examples to evaluate external data. 
-  [] - General housekeeping to remove unused functions and add comments
+TO DO:<\br>
+  [] - Fix any errors with the initial commit<\br>
+  [] - Save/Load weight functionality<\br>
+  [] - Complete README file. <\br>
+  &nbsp;&nbsp;&nbsp;  [] - Add required packages and version numbers.<\br>
+  &nbsp;&nbsp;&nbsp;  [] - Add general usability, such as train, save and load models.<\br>
+  &nbsp;&nbsp;&nbsp; [] - Add examples to evaluate external data. <\br>
+  [] - General housekeeping to remove unused functions and add comments <\br>
 
 
 
