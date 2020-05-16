@@ -5,10 +5,7 @@ import json
 from data import Dataset
 from optim import Optimizer, BCE, LR_scheduler
 
-from nets.bin.mlp import MLP
 from nets.bin.cnn_rnn import CNN_RNN, RNN_CNN, CNN, RNN, C_RNN, C_CNN
-from nets.bin.tran import Transformer
-
 
 class Main:
 

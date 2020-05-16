@@ -7,8 +7,6 @@ from sklearn.model_selection import train_test_split, KFold
 
 from time import time
 
-from transformers import BertTokenizer
-
 
 class Dataset:
 
@@ -294,65 +292,3 @@ class BSet(data.Dataset):  # BERT
         tok_tweet = tok_x[self.x]
         y = tok_x[self.y]
         return tok_tweet, y
-
-
-class BPadSequence:  # BERT
-
-    def __init__(self, y="relevant", pad=0):
-        self.y = y
-        self.pad = pad
-
-    def __call__(self, batch):
-
-        # unzip batch
-        tok_tweet, y = zip(*batch)
-
-        # maximum lengths
-        max_s_len = max([len(x) for x in tok_tweet])
-
-        # Initialize padded array
-        batch_len = len(tok_tweet)
-        padded_tweet = np.zeros([batch_len, max_s_len])*self.pad
-        mask = np.zeros([batch_len, max_s_len])
-
-        if self.y == "tok_tags":
-            padded_y = np.zeros([batch_len, max_s_len])
-        else:
-            padded_y = y
-
-        # Pad
-        for i, (line, tags) in enumerate(zip(tok_tweet, y)):
-            limit = min(len(line), max_s_len)
-            padded_tweet[i][0: limit] = line[0: limit]
-            mask[i][0:limit] = 1
-            # Pad tags
-            if self.y == "tok_tags":
-                limit = min(len(tags), limit)
-                padded_y[i][0: limit] = tags[0: limit]
-        return {"word_ids": padded_tweet, "mask": mask}, padded_y
-
-
-class ExtDataset:
-
-    def __init__(self, nset, tokenizer):
-
-        # TODO: Receive tokenizer
-
-        # Get Dataset
-        if nset == "noisy":
-            dset = pd.read_csv("./datasets/dataset_noisy.csv", sep="\t")
-            self.input_col = "clean_text"
-        elif nset == "cyb":
-            dset = pd.read_csv("./datasets/dataset_cyb.csv", sep="\t")
-            self.input_col = "tweet"
-        elif nset == "sev":
-            dset = pd.read_csv("./datasets/dataset_sev.csv", sep="\t")
-            self.input_col = "tweet"
-        else:
-            raise Exception("Invalid dataset {0}".format(nset))
-
-        # Tokenize
-        dset = self.from_pretrained(dset, tokenizer)
-
-        # Apply mask with dset[mask] and make the train, val and test sets
-        self.train, self.test = train_test_split(dset.copy())

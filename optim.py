@@ -3,9 +3,6 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
-from transformers import get_linear_schedule_with_warmup
-
-
 class Optimizer:
     def get_opt(self, params):
         # Set optimizer
@@ -58,10 +55,6 @@ class LR_scheduler:
             scheduler = optim.lr_scheduler.StepLR(opt,
                                                   step_size=conf["step"],
                                                   gamma=conf["decay"])
-        elif conf["lr_scheduler"].lower() == "wlinear":
-            scheduler = get_linear_schedule_with_warmup(opt,
-                                                        conf["warmup"],
-                                                        conf["total"])
         else:
             raise("UNDEFINED SCHEDULER", conf["lr_scheduler"])
 
