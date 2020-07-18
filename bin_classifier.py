@@ -9,10 +9,11 @@ from nets.bin.cnn_rnn import CNN_RNN, RNN_CNN, CNN, RNN, C_RNN, C_CNN
 
 class Main:
 
+    def Load(self, conf):
+        pass
+
     def build_model(self, conf, vocab, char_vocab):
-        if conf["arch"] == "mlp":
-            return MLP(conf, vocab)
-        elif conf["arch"] == "cnn":
+        if conf["arch"] == "cnn":
             return CNN(conf, vocab, char_vocab)
         elif conf["arch"] == "rnn":
             return RNN(conf, vocab, char_vocab)
@@ -24,8 +25,6 @@ class Main:
             return C_RNN(conf, vocab, char_vocab)
         elif conf["arch"] == "char_cnn":
             return C_CNN(conf, vocab, char_vocab)
-        elif conf["arch"] == "transformer":
-            return Transformer(conf, vocab, char_vocab)
         else:
             raise Exception("INVALID ARCH")
 

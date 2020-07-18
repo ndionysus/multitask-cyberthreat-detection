@@ -5,14 +5,19 @@ This repository holds the data, source code and resulting model weights for the 
 This repository is still a work in progress.
 
 TO DO: </br>
-  [ ] - Fix any errors with the initial commit </br>
-  [ ] - Save/Load weight functionality </br>
+  [x] - Fix any errors with the initial commit </br>
+  [x] - Save weights and conf </br>
+  [ ] - Load weights and conf </br>
   [ ] - Complete README file. </br>
-  &nbsp;&nbsp;&nbsp;  [ ] - Add required packages and version numbers.</br>
+  &nbsp;&nbsp;&nbsp;  [x] - Add required packages and version numbers.</br>
   &nbsp;&nbsp;&nbsp;  [ ] - Add general usability, such as train, save and load models.</br>
   &nbsp;&nbsp;&nbsp; [ ] - Add examples to evaluate external data. </br>
   [ ] - General housekeeping to remove unused functions and add comments </br>
 
+# Requierments
+torch == 1.5.1
+pandas == 1.0.5
+pytorch-crf == 0.7.2
 
 # Citation
 
