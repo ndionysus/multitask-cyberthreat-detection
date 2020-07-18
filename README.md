@@ -15,9 +15,9 @@ TO DO: </br>
   [ ] - General housekeeping to remove unused functions and add comments </br>
 
 # Requierments
-torch == 1.5.1
-pandas == 1.0.5
-pytorch-crf == 0.7.2
+torch == 1.5.1 </br>
+pandas == 1.0.5 </br>
+pytorch-crf == 0.7.2 </br>
 
 # Citation
 
