@@ -21,7 +21,17 @@ pytorch-crf == 0.7.2 </br>
 
 # Citation
 
-To be added..
+```
+@INPROCEEDINGS{9207159,
+  author={N. {Dionísio} and F. {Alves} and P. M. {Ferreira} and A. {Bessani}},
+  booktitle={2020 International Joint Conference on Neural Networks (IJCNN)}, 
+  title={Towards end-to-end Cyberthreat Detection from Twitter using Multi-Task Learning}, 
+  year={2020},
+  volume={},
+  number={},
+  pages={1-8},
+  doi={10.1109/IJCNN48605.2020.9207159}}
+```
 
 # References
 
