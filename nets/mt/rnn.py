@@ -116,9 +116,9 @@ class RNN(NN):
     def forward(self, word_ids, char_ids, slen, wlen, mask):
         '''INFERENCE'''
         # Pass through the initial shared layers
-        model = self.shared(batch)
+        model = self.shared(word_ids, char_ids, slen, wlen)
         # Bin output
-        bin_fw = _bin_fw(model)
+        bin_out = self._bin_fw(model, slen)
         # NER output
-        ner_out = _ner_fw(model, mask)
+        ner_out = self._ner_fw(model, mask)
         return bin_out, ner_out

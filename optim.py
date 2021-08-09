@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
+
 class Optimizer:
     def get_opt(self, params):
         # Set optimizer
@@ -17,7 +18,7 @@ class Optimizer:
             optimizer = optim.RMSprop(params=params,
                                       weight_decay=self.conf["l2_loss"],
                                       lr=self.conf["lr"],
-                                      momentum=conf["momentum"])
+                                      momentum=self.conf["momentum"])
             # Stochastic Gradient Descent
         elif self.conf["method"].lower() == "sgd":
             optimizer = optim.SGD(params=params,

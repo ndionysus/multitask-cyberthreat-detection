@@ -1,10 +1,12 @@
+import enum
 import utils
 import argparse
 import json
 import torch
 import numpy as np
+from tqdm import tqdm
 
-from data import Dataset
+from data import Dataset, DatasetUtil
 from optim import *
 
 from nets.mt.rnn import RNN
@@ -173,7 +175,8 @@ class Main:
                     if save:
                         model.save(step, conf, self.best,
                                    (bin_opt, ner_opt), (bin_lr_sch, ner_lr_sch),
-                                   "mt")
+                                   dset.vocab, dset.char_vocab, dset.tag_vocab,
+                                   task="mt")
                 else:
                     if stop == conf["train"]["patience"]:
                         return
@@ -182,6 +185,187 @@ class Main:
             # maybe update lr
             ner_lr_sch.step()
             bin_lr_sch.step()
+
+
+class Synapse:
+    def build_model(self, conf, vocab, char_vocab, tag_vocab):
+        if conf["arch"] == "rnn":
+            return RNN(conf, vocab, char_vocab, tag_vocab)
+        elif conf["arch"] == "cnn":
+            return CNN(conf, vocab, char_vocab, tag_vocab)
+        elif conf["arch"] == "cnn_rnn":
+            return CNN_RNN(conf, vocab, char_vocab, tag_vocab)
+        elif conf["arch"] == "rnn_cnn":
+            return RNN_CNN(conf, vocab, char_vocab, tag_vocab)
+        elif conf["arch"] == "char_cnn":
+            return C_CNN(conf, vocab, char_vocab, tag_vocab)
+        elif conf["arch"] == "char_rnn":
+            return C_RNN(conf, vocab, char_vocab, tag_vocab)
+        else:
+            raise Exception("INVALID ARCH")
+
+    def fw_pass(self, model, padded_input):
+        # convert into tensors
+        for key, val in padded_input.items():
+            padded_input[key] = model.Tensor(val).long()
+        padded_input["mask"] = padded_input["word_ids"].data.gt(0).byte()
+        # get predictions
+        bin_out, ner_out = model(**padded_input)
+        return bin_out, ner_out
+
+    def __init__(self, conf, ckpt_path, synapse, output="output.json"):
+        ckpt = torch.load(ckpt_path)
+        print(ckpt.keys())
+
+        # Build DatasetUtil - General functionality to transform data
+        data_util = DatasetUtil(ckpt["word_vocab"],
+                                ckpt["char_vocab"],
+                                ckpt["tag_vocab"])
+
+        # Build model
+        model = self.build_model(conf["model"],
+                                 ckpt["word_vocab"],
+                                 ckpt["char_vocab"],
+                                 ckpt["tag_vocab"])
+        print("Loaded model from ", ckpt_path)
+        model.load_state_dict(ckpt["model_state"])
+        model.eval()
+
+        # Read Synapse json
+        synpase_file = open(synapse, "r").read()
+        lines = synpase_file.split("}{")
+
+        with open(output, 'w', encoding='utf-8') as output_file:
+            for i, l in enumerate(tqdm(lines)):
+                # Dumb parsing, due to the odd {cluster}{cluster} format
+                # TODO: Check if this is a known format or standard.
+                # Any line that isnt the first will have a missing { a the start
+                if i != 0:
+                    l = "{" + l
+                # Any line that isnt the last one will have a missing } at the end
+                if i != len(lines)-1:
+                    l += "}"
+
+                json_line = json.loads(l)
+
+                tweets = json_line["_source"]["tweets"]
+
+                for (i, tweet) in enumerate(tweets):
+                    # Preprocess
+                    clean_tweet = utils.clean(tweet["text"])
+                    batch = data_util.fit(clean_tweet)
+                    # Prediction
+                    bin_out, ner_out = self.fw_pass(model, batch)
+
+                    # Binary pred with value between [0:1]
+                    bin_out = torch.sigmoid(
+                        bin_out).detach().cpu().numpy()[0][0]
+
+                    # NER with sequence of tags
+                    ner_out = ner_out[0]
+                    # Convert ID to corresponding String
+                    ner_out = data_util.decode_tags(ner_out)[1:-1]
+                    ner_out_text = " ".join(ner_out)
+
+                    # Summarize
+                    entities = {"Company": "",
+                                "Asset": "",
+                                "Threat": "",
+                                "IDs": ""}
+                    for (word, entity) in zip(clean_tweet.split(" "), ner_out):
+                        if("PRO" in entity) and word not in entities["Asset"]:
+                            entities["Asset"] = f"{entities['Asset']} {word}"
+                        elif("VUL" in entity) and word not in entities["Threat"]:
+                            entities["Threat"] = f"{entities['Threat']} {word}"
+                        elif("ID" in entity) and word not in entities["IDs"]:
+                            entities["IDs"] = f"{entities['IDs']} {word}"
+                        elif("ORG" in entity) and word not in entities["Company"]:
+                            entities["Company"] = f"{entities['Company']} {word}"
+
+                    entities["Asset"] = entities["Asset"][1:]
+                    entities["Threat"] = entities["Threat"][1:]
+                    entities["IDs"] = entities["IDs"][1:]
+                    entities["Company"] = entities["Company"][1:]
+
+                    tweet["clean_text"] = clean_tweet
+                    tweet["tags"] = ner_out_text
+                    tweet["entities"] = entities
+                    tweet["binary_pred_confidence"] = str(bin_out)
+                    tweet["binary_pred"] = int(round(bin_out))
+
+                    json_line["_source"]["tweets"][i] = tweet
+
+                json.dump(json_line, output_file,
+                          ensure_ascii=False, indent=4)
+
+
+class ExampleClass:
+    def build_model(self, conf, vocab, char_vocab, tag_vocab):
+        if conf["arch"] == "rnn":
+            return RNN(conf, vocab, char_vocab, tag_vocab)
+        elif conf["arch"] == "cnn":
+            return CNN(conf, vocab, char_vocab, tag_vocab)
+        elif conf["arch"] == "cnn_rnn":
+            return CNN_RNN(conf, vocab, char_vocab, tag_vocab)
+        elif conf["arch"] == "rnn_cnn":
+            return RNN_CNN(conf, vocab, char_vocab, tag_vocab)
+        elif conf["arch"] == "char_cnn":
+            return C_CNN(conf, vocab, char_vocab, tag_vocab)
+        elif conf["arch"] == "char_rnn":
+            return C_RNN(conf, vocab, char_vocab, tag_vocab)
+        else:
+            raise Exception("INVALID ARCH")
+
+    def fw_pass(self, model, padded_input):
+        # convert into tensors
+        for key, val in padded_input.items():
+            padded_input[key] = model.Tensor(val).long()
+        padded_input["mask"] = padded_input["word_ids"].data.gt(0).byte()
+        # get predictions
+        bin_out, ner_out = model(**padded_input)
+        return bin_out, ner_out
+
+    def __init__(self, conf, ckpt_path, input_file, output="output.json"):
+        ckpt = torch.load(ckpt_path)
+
+        # Build DatasetUtil - General functionality to transform data
+        data_util = DatasetUtil(ckpt["word_vocab"],
+                                ckpt["char_vocab"],
+                                ckpt["tag_vocab"])
+
+        # Build model
+        model = self.build_model(conf["model"],
+                                 ckpt["word_vocab"],
+                                 ckpt["char_vocab"],
+                                 ckpt["tag_vocab"])
+        print("Loaded model from ", ckpt_path)
+        model.load_state_dict(ckpt["model_state"])
+        model.eval()
+
+        # Read Input file
+        input_file = open(input_file, "r").read()
+        # Parse file as needed ...
+
+        with open(output, 'w', encoding='utf-8') as output_file:
+            for i, l in enumerate(tqdm(input_file)):
+                '''
+                    Example workflow
+                '''
+                # Preprocess
+                clean_tweet = utils.clean()  # pass text here
+                batch = data_util.fit(clean_tweet)
+                # Prediction
+                bin_out, ner_out = self.fw_pass(model, batch)
+
+                # Binary pred with value between [0:1]
+                bin_out = torch.sigmoid(
+                    bin_out).detach().cpu().numpy()[0][0]
+
+                # NER with sequence of tags
+                ner_out = ner_out[0]
+                # Convert ID to corresponding String
+                ner_out = data_util.decode_tags(ner_out)[1:-1]
+                ner_out_text = " ".join(ner_out)
 
 
 if __name__ == '__main__':
@@ -194,6 +378,8 @@ if __name__ == '__main__':
                         help='Boolean', default=False)
     parser.add_argument('-conf', metavar='conf', default="./conf/mt/rnn.json",
                         help='model configuration. JSON files defined in ./conf/')
+    parser.add_argument('-input', metavar='input_file', default=None,
+                        help='Pass an input file for inference')
 
     args = parser.parse_args()
 
@@ -209,4 +395,6 @@ if __name__ == '__main__':
         Main(dset, conf, save=args.save)
 
     else:
-        pass
+        conf = json.load(open(args.conf, "r"))
+        # Switch this to your Example class
+        Synapse(conf, args.load, args.input)

@@ -1,0 +1,61 @@
+{
+  "model": {
+    "arch": "rnn",
+    "weight_init": "xavier",
+    "use_chars": true,
+    "c_rnn_out": "laststep",
+    "c_dim": 100,
+    "c_in_dropout": 0.0,
+    "c_rnn_layers": [
+      {
+        "cell": "lstm",
+        "dim": 100,
+        "n_layers": 1,
+        "bidirectional": true
+      }
+    ],
+    "pretrained": null,
+    "w_dim": 200,
+    "w_in_dropout": 0.0,
+    "w_bin_out": "maxpool",
+    "w_rnn_layers": [
+      {
+        "cell": "lstm",
+        "dim": 300,
+        "n_layers": 1,
+        "bidirectional": true
+      }
+    ],
+    "mid_dropout": 0.0,
+    "use_crf": true
+  },
+  "optim": {
+    "mode": "joint",
+    "bin": {
+      "weight": 0.5,
+      "method": "adam",
+      "lr": 0.001,
+      "momentum": 0.0,
+      "l2_loss": 0.0,
+      "lr_scheduler": null,
+      "step": 25,
+      "decay": 1.0
+    },
+    "ner": {
+      "weight": 0.5,
+      "method": "adam",
+      "lr": 0.001,
+      "momentum": 0.0,
+      "l2_loss": 0.0,
+      "lr_scheduler": null,
+      "step": 25,
+      "decay": 1.0
+    }
+  },
+  "train": {
+    "batch_size": 256,
+    "max_steps": 1000,
+    "val_steps": 5,
+    "patience": 5
+  }
+}

@@ -2,17 +2,16 @@
 
 This repository holds the data, source code and resulting model weights for the paper "Towards end-to-end Cyberthreat Detection from Twitter using Multi-Task Learning" to be presented at IJCNN 2020.
 
-This repository is still a work in progress.
-
-TO DO: </br>
-  [x] - Fix any errors with the initial commit </br>
-  [x] - Save weights and conf </br>
-  [ ] - Load weights and conf </br>
-  [ ] - Complete README file. </br>
-  &nbsp;&nbsp;&nbsp;  [x] - Add required packages and version numbers.</br>
-  &nbsp;&nbsp;&nbsp;  [ ] - Add general usability, such as train, save and load models.</br>
-  &nbsp;&nbsp;&nbsp; [ ] - Add examples to evaluate external data. </br>
-  [ ] - General housekeeping to remove unused functions and add comments </br>
+# Train models by running
+```
+python bin_classifier.py
+python ner_classifier.py
+python mt_classifier.py
+```
+# Example usage of a pretrained model
+```
+python mt_classifier.py -conf ckpts/mt/rnn_20210805172841/conf.json -load ckpts/mt/rnn_20210805172841/ckpt_step-265.pth -input <input_file>.json 
+```
 
 # Requierments
 torch == 1.5.1 </br>

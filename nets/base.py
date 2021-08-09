@@ -24,7 +24,7 @@ class NN(nn.Module):
         # Helper function to turn an array into a tensor
         return torch.Tensor(data).to(self.device)
 
-    def save(self, step, conf, metrics, opt, lr_sch, task, path="./ckpts"):
+    def save(self, step, conf, metrics, opt, lr_sch, word_vocab, char_vocab, tag_vocab, task, path="./ckpts"):
         # Check if folders exists
         if not os.path.isdir(path):
             os.makedirs(path)
@@ -49,7 +49,14 @@ class NN(nn.Module):
         else:
             save_dict["optimizer_state"] = opt.get_state_dict()
             save_dict["lr_scheduler"] = lr_sch.get_state_dict()
+
+        # Add Vocabulary from training set
+        save_dict["word_vocab"] = word_vocab
+        save_dict["char_vocab"] = char_vocab
+        save_dict["tag_vocab"] = tag_vocab
+
         torch.save(save_dict, ckpt)
+
         # Delete last ckpt
         try:
             os.remove(self.ckpt)

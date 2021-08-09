@@ -89,56 +89,6 @@ class Dataset:
         self.inv_vocab = {v: k for k, v in self.vocab.items()}
         self.inv_tags = {v: k for k, v in self.tag_vocab.items()}
 
-    def from_pretrained(self, dset, tok):
-        tok_text = []
-        tok_tags = []
-        self.tag_vocab = {"<pad>": 0, "<s>": 1, "</s>": 2, "<i>": 3}
-
-        if self.tokenizer == "bert":
-            tokenizer = BertTokenizer.from_pretrained("bert-base-uncased")
-        elif self.tokenizer == "cybert":
-            tokenizer = BertTokenizer.from_pretrained("./bert_model/")
-
-        spec_tokens = {"start": "[CLS]", "end": "[SEP]", "pad": "[PAD]"}
-
-        for ind, row in dset.iterrows():
-            # For each sentence
-            # If its relevant, we have to pay attention to the tags
-            if row["relevant"] == 1:
-
-                # Begin sentence with start token
-                line_text = tokenizer.encode(spec_tokens["start"])
-                line_tags = [self.tag_vocab["<s>"]]
-
-                # for each word and its tag..
-                for word, tag in zip(row["clean_tweet"].split(" "), row["entities"].split(" ")):
-                    # Build tag vocablary as you go
-                    if tag not in self.tag_vocab:
-                        self.tag_vocab[tag] = len(self.tag_vocab)
-
-                    word = tokenizer.encode(word)
-                    line_text += word
-
-                    tag = [self.tag_vocab[tag]] + \
-                        ([self.tag_vocab["<i>"]]*(len(word)-1))
-                    line_tags += tag
-
-                # End with end tokens
-                line_text += tokenizer.encode(spec_tokens["end"])
-                line_tags += [self.tag_vocab["</s>"]]
-            else:
-                line_text = tokenizer.encode(spec_tokens["start"])
-                for word in row["clean_tweet"].split(" "):
-                    word = tokenizer.encode(word)
-                    line_text += word
-                line_text += tokenizer.encode(spec_tokens["end"])
-                line_tags = np.asarray([None])
-            tok_text.append(line_text)
-            tok_tags.append(line_tags)
-        dset["tok_tweet"] = tok_text
-        dset["tok_tags"] = tok_tags
-        return dset
-
     def __init__(self, batch_size=256, threshold=100, tokenizer=None):
         # Variables
         # threshold = min occurences to keep a word in the vocab
@@ -150,9 +100,6 @@ class Dataset:
         dset = pd.read_csv("./datasets/all_data.csv", sep="\t")
         dset["timestamp"] = pd.to_datetime(
             dset["timestamp"]).dt.tz_convert(None)
-
-        if self.tokenizer is not None:
-            dset = self.from_pretrained(dset, tokenizer)
 
         # Timestamps
         train = (pd.Timestamp(2016, 11, 21), pd.Timestamp(2017, 4, 1))
@@ -195,15 +142,7 @@ class Dataset:
                 test = Set(self.test)
             collate_fn = PadSequence
         else:
-            if y == "tok_tags":
-                train = BSet(_get_pos(self.train), y=y)
-                val = BSet(_get_pos(self.val), y=y)
-                test = BSet(_get_pos(self.test), y=y)
-            else:
-                train = BSet(self.train)
-                val = BSet(self.val)
-                test = BSet(self.test)
-            collate_fn = BPadSequence
+            pass  # TODO
 
         # Batches
         train_batch = data.DataLoader(train, batch_size=self.batch_size,
@@ -213,6 +152,82 @@ class Dataset:
         test_batch = data.DataLoader(test, batch_size=self.batch_size,
                                      collate_fn=collate_fn(y, self.pad))
         return train_batch, val_batch, test_batch
+
+
+class DatasetUtil:
+
+    def pad(self, batch):
+        # unzip batch
+        tok_tweet, tok_chars, slen, wlen = batch
+
+        # maximum lengths
+        max_s_len = max(slen)
+        max_w_len = max(wlen)
+
+        # Initialize padded array
+        batch_len = len(tok_tweet)
+        padded_tweet = np.zeros([batch_len, max_s_len])
+        padded_chars = np.zeros([batch_len, max_s_len, max_w_len])
+        padded_wlen = np.ones([batch_len, max_s_len])
+        mask = np.zeros([batch_len, max_s_len])
+
+        # Pad
+        for i, line in enumerate(tok_tweet):
+            limit = min(len(line), max_s_len)
+            padded_tweet[i][0: limit] = line[0: limit]
+            mask[i][0:limit] = 1
+
+            # Pad characters
+            for j, word in enumerate(tok_chars[i]):
+                padded_wlen[i][j] = max(len(word), 1)
+                limit = min(len(word), max_w_len)
+                padded_chars[i][j][0: limit] = word[0: limit]
+
+        return {"word_ids": padded_tweet, "char_ids": padded_chars, "slen": slen, "wlen": padded_wlen, "mask": mask}
+
+    def str2tok(self, s):
+        sentence = [self.vocab["<s>"]]
+        words = [[self.char_vocab["<s>"]]]
+        for w in s.split(" "):
+            chars = []
+            for c in w:
+                if c in self.char_vocab:
+                    chars.append(self.char_vocab[c])
+                else:
+                    chars.append(self.char_vocab["<unk>"])
+            words.append(chars)
+            if w in self.vocab:
+                sentence.append(self.vocab[w])
+            else:
+                sentence.append(self.vocab["<unk>"])
+
+        sentence.append(self.vocab["</s>"])
+        words.append([self.char_vocab["</s>"]])
+
+        return sentence, words
+
+    def fit(self, line):
+        tok_tweet, tok_chars, slen, wlen = [], [], [], []
+        tk, tc = self.str2tok(line)
+
+        tok_tweet.append(tk)
+        tok_chars.append(tc)
+        slen.append(len(tk))
+        wlen.append(max([len(w) for w in tc]))
+
+        padded_input = self.pad((tok_tweet, tok_chars, slen, wlen))
+
+        return padded_input
+
+    def decode_tags(self, tags):
+        return [self.inv_tags[tag] for tag in tags]
+
+    def __init__(self, word_vocab, char_vocab, tag_vocab):
+        self.vocab = word_vocab
+        self.char_vocab = char_vocab
+        self.tag_vocab = tag_vocab
+        self.inv_vocab = {v: k for k, v in self.vocab.items()}
+        self.inv_tags = {v: k for k, v in self.tag_vocab.items()}
 
 
 class Set(data.Dataset):
@@ -274,21 +289,3 @@ class PadSequence:
                 padded_chars[i][j][0: limit] = word[0: limit]
 
         return {"word_ids": padded_tweet, "char_ids": padded_chars, "slen": slen, "wlen": padded_wlen, "mask": mask}, padded_y
-
-
-class BSet(data.Dataset):  # BERT
-
-    def __init__(self, df, x="tok_tweet", y="relevant"):
-        self.df = df
-        self.x = x
-        self.y = y
-
-    def __len__(self):
-        return len(self.df)
-
-    def __getitem__(self, index):
-        # Select a single sample
-        tok_x = self.df.iloc[index]
-        tok_tweet = tok_x[self.x]
-        y = tok_x[self.y]
-        return tok_tweet, y
