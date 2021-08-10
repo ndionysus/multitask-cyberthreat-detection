@@ -17,23 +17,24 @@ from nets.mt.char_cnn import C_CNN
 from nets.mt.char_rnn import C_RNN
 
 
-class Main:
+def build_model(conf, vocab, char_vocab, tag_vocab):
+    if conf["arch"] == "rnn":
+        return RNN(conf, vocab, char_vocab, tag_vocab)
+    elif conf["arch"] == "cnn":
+        return CNN(conf, vocab, char_vocab, tag_vocab)
+    elif conf["arch"] == "cnn_rnn":
+        return CNN_RNN(conf, vocab, char_vocab, tag_vocab)
+    elif conf["arch"] == "rnn_cnn":
+        return RNN_CNN(conf, vocab, char_vocab, tag_vocab)
+    elif conf["arch"] == "char_cnn":
+        return C_CNN(conf, vocab, char_vocab, tag_vocab)
+    elif conf["arch"] == "char_rnn":
+        return C_RNN(conf, vocab, char_vocab, tag_vocab)
+    else:
+        raise Exception("INVALID ARCH")
 
-    def build_model(self, conf, vocab, char_vocab, tag_vocab):
-        if conf["arch"] == "rnn":
-            return RNN(conf, vocab, char_vocab, tag_vocab)
-        elif conf["arch"] == "cnn":
-            return CNN(conf, vocab, char_vocab, tag_vocab)
-        elif conf["arch"] == "cnn_rnn":
-            return CNN_RNN(conf, vocab, char_vocab, tag_vocab)
-        elif conf["arch"] == "rnn_cnn":
-            return RNN_CNN(conf, vocab, char_vocab, tag_vocab)
-        elif conf["arch"] == "char_cnn":
-            return C_CNN(conf, vocab, char_vocab, tag_vocab)
-        elif conf["arch"] == "char_rnn":
-            return C_RNN(conf, vocab, char_vocab, tag_vocab)
-        else:
-            raise Exception("INVALID ARCH")
+
+class Main:
 
     def bin_fw_pass(self, model, batch):
         # input, labels
@@ -102,8 +103,8 @@ class Main:
         self.iter_ner = iter(self.ner_train)
 
         # Build model
-        model = self.build_model(
-            conf["model"], dset.vocab, dset.char_vocab, dset.tag_vocab)
+        model = build_model(conf["model"], dset.vocab,
+                            dset.char_vocab, dset.tag_vocab)
         # Optimizer(s)
         bin_opt = Optimizer(model.parameters(), conf["optim"]["bin"])
         bin_loss = BCE()
@@ -188,21 +189,6 @@ class Main:
 
 
 class Synapse:
-    def build_model(self, conf, vocab, char_vocab, tag_vocab):
-        if conf["arch"] == "rnn":
-            return RNN(conf, vocab, char_vocab, tag_vocab)
-        elif conf["arch"] == "cnn":
-            return CNN(conf, vocab, char_vocab, tag_vocab)
-        elif conf["arch"] == "cnn_rnn":
-            return CNN_RNN(conf, vocab, char_vocab, tag_vocab)
-        elif conf["arch"] == "rnn_cnn":
-            return RNN_CNN(conf, vocab, char_vocab, tag_vocab)
-        elif conf["arch"] == "char_cnn":
-            return C_CNN(conf, vocab, char_vocab, tag_vocab)
-        elif conf["arch"] == "char_rnn":
-            return C_RNN(conf, vocab, char_vocab, tag_vocab)
-        else:
-            raise Exception("INVALID ARCH")
 
     def fw_pass(self, model, padded_input):
         # convert into tensors
@@ -223,10 +209,10 @@ class Synapse:
                                 ckpt["tag_vocab"])
 
         # Build model
-        model = self.build_model(conf["model"],
-                                 ckpt["word_vocab"],
-                                 ckpt["char_vocab"],
-                                 ckpt["tag_vocab"])
+        model = build_model(conf["model"],
+                            ckpt["word_vocab"],
+                            ckpt["char_vocab"],
+                            ckpt["tag_vocab"])
         print("Loaded model from ", ckpt_path)
         model.load_state_dict(ckpt["model_state"])
         model.eval()
@@ -300,21 +286,6 @@ class Synapse:
 
 
 class ExampleClass:
-    def build_model(self, conf, vocab, char_vocab, tag_vocab):
-        if conf["arch"] == "rnn":
-            return RNN(conf, vocab, char_vocab, tag_vocab)
-        elif conf["arch"] == "cnn":
-            return CNN(conf, vocab, char_vocab, tag_vocab)
-        elif conf["arch"] == "cnn_rnn":
-            return CNN_RNN(conf, vocab, char_vocab, tag_vocab)
-        elif conf["arch"] == "rnn_cnn":
-            return RNN_CNN(conf, vocab, char_vocab, tag_vocab)
-        elif conf["arch"] == "char_cnn":
-            return C_CNN(conf, vocab, char_vocab, tag_vocab)
-        elif conf["arch"] == "char_rnn":
-            return C_RNN(conf, vocab, char_vocab, tag_vocab)
-        else:
-            raise Exception("INVALID ARCH")
 
     def fw_pass(self, model, padded_input):
         # convert into tensors
@@ -334,10 +305,10 @@ class ExampleClass:
                                 ckpt["tag_vocab"])
 
         # Build model
-        model = self.build_model(conf["model"],
-                                 ckpt["word_vocab"],
-                                 ckpt["char_vocab"],
-                                 ckpt["tag_vocab"])
+        model = build_model(conf["model"],
+                            ckpt["word_vocab"],
+                            ckpt["char_vocab"],
+                            ckpt["tag_vocab"])
         print("Loaded model from ", ckpt_path)
         model.load_state_dict(ckpt["model_state"])
         model.eval()
