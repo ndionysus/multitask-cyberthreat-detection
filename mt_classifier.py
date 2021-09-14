@@ -220,62 +220,65 @@ class Synapse:
         # Read Synapse json
         synapse_file = open(synapse, "r")
         synapse_file = json.load(synapse_file)
+        tagged_synapse_file = []
 
+        for i, line in enumerate(tqdm(synapse_file)):
+            tweets = line["_source"]["tweets"]
+
+            for (i, tweet) in enumerate(tweets):
+                # Preprocess
+                clean_tweet = utils.clean(tweet["text"])
+                batch = data_util.fit(clean_tweet)
+                # Prediction
+                bin_out, ner_out = self.fw_pass(model, batch)
+
+                # Binary pred with value between [0:1]
+                bin_out = torch.sigmoid(
+                    bin_out).detach().cpu().numpy()[0][0]
+
+                # NER with sequence of tags
+                ner_out = ner_out[0]
+                # Convert ID to corresponding String
+                ner_out = data_util.decode_tags(ner_out)[1:-1]
+                ner_out_text = " ".join(ner_out)
+
+                # Summarize
+                entities = {"Company": "",
+                            "Asset": "",
+                            "Version": "",
+                            "Threat": "",
+                            "IDs": ""}
+                for (word, entity) in zip(clean_tweet.split(" "), ner_out):
+                    if("PRO" in entity) and word not in entities["Asset"]:
+                        entities["Asset"] = f"{entities['Asset']} {word}"
+                    elif("VUL" in entity) and word not in entities["Threat"]:
+                        entities["Threat"] = f"{entities['Threat']} {word}"
+                    elif("ID" in entity) and word not in entities["IDs"]:
+                        entities["IDs"] = f"{entities['IDs']} {word}"
+                    elif("ORG" in entity) and word not in entities["Company"]:
+                        entities["Company"] = f"{entities['Company']} {word}"
+                    elif("VER" in entity) and word not in entities["Version"]:
+                        entities["Version"] = f"{entities['Version']} {word}"
+
+                entities["Asset"] = entities["Asset"][1:]
+                entities["Threat"] = entities["Threat"][1:]
+                entities["IDs"] = entities["IDs"][1:]
+                entities["Company"] = entities["Company"][1:]
+                entities["Version"] = entities["Version"][1:]
+
+                tweet["clean_text"] = clean_tweet
+                tweet["tags"] = ner_out_text
+                tweet["entities"] = entities
+                tweet["binary_pred_confidence"] = str(bin_out)
+                tweet["binary_pred"] = int(round(bin_out))
+
+                line["_source"]["tweets"][i] = tweet
+                tagged_synapse_file.append(line)
+
+            tagged_synapse_file.append(line)
         with open(output, 'w', encoding='utf-8') as output_file:
-            for i, line in enumerate(tqdm(synapse_file)):
-                tweets = line["_source"]["tweets"]
-
-                for (i, tweet) in enumerate(tweets):
-                    # Preprocess
-                    clean_tweet = utils.clean(tweet["text"])
-                    batch = data_util.fit(clean_tweet)
-                    # Prediction
-                    bin_out, ner_out = self.fw_pass(model, batch)
-
-                    # Binary pred with value between [0:1]
-                    bin_out = torch.sigmoid(
-                        bin_out).detach().cpu().numpy()[0][0]
-
-                    # NER with sequence of tags
-                    ner_out = ner_out[0]
-                    # Convert ID to corresponding String
-                    ner_out = data_util.decode_tags(ner_out)[1:-1]
-                    ner_out_text = " ".join(ner_out)
-
-                    # Summarize
-                    entities = {"Company": "",
-                                "Asset": "",
-                                "Version": "",
-                                "Threat": "",
-                                "IDs": ""}
-                    for (word, entity) in zip(clean_tweet.split(" "), ner_out):
-                        if("PRO" in entity) and word not in entities["Asset"]:
-                            entities["Asset"] = f"{entities['Asset']} {word}"
-                        elif("VUL" in entity) and word not in entities["Threat"]:
-                            entities["Threat"] = f"{entities['Threat']} {word}"
-                        elif("ID" in entity) and word not in entities["IDs"]:
-                            entities["IDs"] = f"{entities['IDs']} {word}"
-                        elif("ORG" in entity) and word not in entities["Company"]:
-                            entities["Company"] = f"{entities['Company']} {word}"
-                        elif("VER" in entity) and word not in entities["Version"]:
-                            entities["Version"] = f"{entities['Version']} {word}"
-
-                    entities["Asset"] = entities["Asset"][1:]
-                    entities["Threat"] = entities["Threat"][1:]
-                    entities["IDs"] = entities["IDs"][1:]
-                    entities["Company"] = entities["Company"][1:]
-                    entities["Version"] = entities["Version"][1:]
-
-                    tweet["clean_text"] = clean_tweet
-                    tweet["tags"] = ner_out_text
-                    tweet["entities"] = entities
-                    tweet["binary_pred_confidence"] = str(bin_out)
-                    tweet["binary_pred"] = int(round(bin_out))
-
-                    line["_source"]["tweets"][i] = tweet
-
-                json.dump(line, output_file,
-                          ensure_ascii=False, indent=4)
+            json.dump(tagged_synapse_file, output_file,
+                      ensure_ascii=False, indent=4)
 
 
 class ExampleClass:
