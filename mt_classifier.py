@@ -218,23 +218,12 @@ class Synapse:
         model.eval()
 
         # Read Synapse json
-        synpase_file = open(synapse, "r").read()
-        lines = synpase_file.split("}{")
+        synapse_file = open(synapse, "r")
+        synapse_file = json.load(synapse_file)
 
         with open(output, 'w', encoding='utf-8') as output_file:
-            for i, l in enumerate(tqdm(lines)):
-                # Dumb parsing, due to the odd {cluster}{cluster} format
-                # TODO: Check if this is a known format or standard.
-                # Any line that isnt the first will have a missing { a the start
-                if i != 0:
-                    l = "{" + l
-                # Any line that isnt the last one will have a missing } at the end
-                if i != len(lines)-1:
-                    l += "}"
-
-                json_line = json.loads(l)
-
-                tweets = json_line["_source"]["tweets"]
+            for i, line in enumerate(tqdm(synapse_file)):
+                tweets = line["_source"]["tweets"]
 
                 for (i, tweet) in enumerate(tweets):
                     # Preprocess
@@ -256,6 +245,7 @@ class Synapse:
                     # Summarize
                     entities = {"Company": "",
                                 "Asset": "",
+                                "Version": "",
                                 "Threat": "",
                                 "IDs": ""}
                     for (word, entity) in zip(clean_tweet.split(" "), ner_out):
@@ -267,11 +257,14 @@ class Synapse:
                             entities["IDs"] = f"{entities['IDs']} {word}"
                         elif("ORG" in entity) and word not in entities["Company"]:
                             entities["Company"] = f"{entities['Company']} {word}"
+                        elif("VER" in entity) and word not in entities["Version"]:
+                            entities["Version"] = f"{entities['Version']} {word}"
 
                     entities["Asset"] = entities["Asset"][1:]
                     entities["Threat"] = entities["Threat"][1:]
                     entities["IDs"] = entities["IDs"][1:]
                     entities["Company"] = entities["Company"][1:]
+                    entities["Version"] = entities["Version"][1:]
 
                     tweet["clean_text"] = clean_tweet
                     tweet["tags"] = ner_out_text
@@ -279,9 +272,9 @@ class Synapse:
                     tweet["binary_pred_confidence"] = str(bin_out)
                     tweet["binary_pred"] = int(round(bin_out))
 
-                    json_line["_source"]["tweets"][i] = tweet
+                    line["_source"]["tweets"][i] = tweet
 
-                json.dump(json_line, output_file,
+                json.dump(line, output_file,
                           ensure_ascii=False, indent=4)
 
 
